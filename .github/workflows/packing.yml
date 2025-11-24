@@ -25,8 +25,8 @@ jobs:
 
       - name: Run packing script
         run: |
-          echo "Running packing_improved.py..."
-          python packing_improved.py
+          echo "Running packing.py..."
+          python packing.py
 
       - name: Upload CSV & PNG results
         uses: actions/upload-artifact@v4
