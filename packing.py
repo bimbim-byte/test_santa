@@ -9,9 +9,9 @@ from shapely import affinity
 from shapely.ops import unary_union
 from matplotlib.patches import Rectangle
 import time
+import os
 
-# Optional: path to uploaded sample image (developer-provided)
-sample_image_path = '/mnt/data/c28dbb48-4dcb-475c-a651-1680fcd950a2.png'
+os.makedirs("output", exist_ok=True)
 
 # --------------------------
 # Precision & scale
@@ -247,7 +247,7 @@ def compact_trees_greedy(trees, epsilon=1e-4, max_iters=200):
 # --------------------------
 # Plotting (improved)
 # --------------------------
-def plot_packing(n, trees, side_length, title_extra=''):
+def plot_packing(n, trees, side_length, title_extra='', save_path=None):
     fig, ax = plt.subplots(figsize=(6, 6))
     colors = plt.cm.viridis(np.linspace(0, 1, len(trees)))
     for i, tree in enumerate(trees):
@@ -257,20 +257,24 @@ def plot_packing(n, trees, side_length, title_extra=''):
         ax.fill([float(xx) for xx in x], [float(yy) for yy in y], alpha=0.6, color=colors[i])
         ax.plot([float(xx) for xx in x], [float(yy) for yy in y], color='k', linewidth=0.2, alpha=0.3)
 
-    # Bounding box
     u_poly = unary_union([t.polygon for t in trees])
     bounds = u_poly.bounds
     minx, miny, maxx, maxy = [Decimal(str(b)) / scale_factor for b in bounds]
-    w = maxx - minx; h = maxy - miny
-    rect_x = float(minx); rect_y = float(miny)
-    rect = Rectangle((rect_x, rect_y), float(side_length), float(side_length),
+    rect = Rectangle((float(minx), float(miny)), float(side_length), float(side_length),
                      fill=False, edgecolor='red', linewidth=2, linestyle='--')
     ax.add_patch(rect)
 
     ax.set_aspect('equal')
     ax.set_title(f'N={n} | Side: {side_length:.6f} {title_extra}')
     plt.axis('off')
-    plt.show()
+
+    # <<--- Tambahan penting untuk PNG
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    plt.close(fig)
+
+
 
 # --------------------------
 # Main loop: 1..200 (like original)
@@ -309,7 +313,9 @@ def main():
         if n % 10 == 0:
             elapsed = time.time() - t0
             print(f"[{n}/200] Side Length: {side_length:.6f} (elapsed {elapsed:.1f}s)")
-            plot_packing(n, trees, float(side_length), title_extra="(improved packing)")
+            save_name = f"output/packing_{n:03d}.png"
+            plot_packing(n, trees, float(side_length), title_extra="(improved packing)", save_path=save_name)
+
 
     # Save CSV similar to original: round to 6 decimals and prefix 's'
     df = pd.DataFrame(submission_data, columns=['id', 'x', 'y', 'deg'])
