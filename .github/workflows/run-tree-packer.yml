@@ -1,39 +1,33 @@
-{"variant":"email","title":"run-tree-packer.yml","id":"00001"}
-name: Run Tree Packer (optimizer)
+name: Run Tree Packer
 
 on:
   workflow_dispatch:
     inputs:
       python-version:
-        description: 'Python version to use'
+        description: 'Python version'
         required: false
         default: '3.11'
       input-file:
-        description: 'CSV input path (relative to repo root)'
+        description: 'CSV input'
         required: false
         default: 'first_submission.csv'
       output-file:
-        description: 'CSV output path (relative to repo root)'
+        description: 'CSV output'
         required: false
         default: 'final_submission.csv'
       iters:
-        description: 'SA iterations (per config)'
+        description: 'SA iterations'
         required: false
         default: '15000'
       restarts:
-        description: 'Number of restarts'
+        description: 'Restarts'
         required: false
         default: '5'
-  push:
-    branches:
-      - main
-      - master
 
 jobs:
   run-optimizer:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,58 +37,32 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        id: pip-cache
-        with:
-          path: |
-            ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            pip install numpy pandas numba
-          fi
+          pip install numpy pandas numba
 
-      - name: Show Python and pip info
-        run: |
-          python -V
-          pip -V
-          python -c "import numpy; import pandas; import numba; print('numpy', numpy.__version__, 'pandas', pandas.__version__, 'numba', numba.__version__)"
-
-      - name: Run Tree Packer
+      - name: Run optimizer
         env:
           INPUT_FILE: ${{ inputs.input-file }}
           OUTPUT_FILE: ${{ inputs.output-file }}
           ITERS: ${{ inputs.iters }}
           RESTARTS: ${{ inputs.restarts }}
         run: |
-          # ensure script is executable or run with python
-          # replace 'pre.py' with the actual filename if different
-          SCRIPT=pre.py
+          SCRIPT=tree_packer.py
           if [ ! -f "$SCRIPT" ]; then
-            echo "ERROR: $SCRIPT not found in repo root. Please place your script at repo root as $SCRIPT"
-            exit 2
+            echo "ERROR: $SCRIPT tidak ditemukan di repo root"
+            exit 1
           fi
 
-          echo "Running optimizer:"
-          echo "  input: $INPUT_FILE"
-          echo "  output: $OUTPUT_FILE"
-          echo "  iters: $ITERS"
-          echo "  restarts: $RESTARTS"
+          python -u $SCRIPT \
+            -i "$INPUT_FILE" \
+            -o "$OUTPUT_FILE" \
+            -n "$ITERS" \
+            -r "$RESTARTS"
 
-          # run with unbuffered output so logs stream correctly
-          python -u $SCRIPT -i "$INPUT_FILE" -o "$OUTPUT_FILE" -n "$ITERS" -r "$RESTARTS"
-
-      - name: Upload result artifact
-        if: always()
+      - name: Upload output
         uses: actions/upload-artifact@v4
         with:
-          name: tree-packer-output
+          name: final-submission
           path: ${{ inputs.output-file }}
